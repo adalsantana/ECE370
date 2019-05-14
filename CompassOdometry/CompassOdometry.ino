@@ -27,7 +27,8 @@ char pass[] = SECRET_PASS;  //network password
 int status = WL_IDLE_STATUS; 
 WiFiServer server(80); 
 WiFiUDP Udp; 
-
+double tick = 0; 
+double tock = 0; 
 void setup() {
   Serial.begin(9600);
   motorsetup();
@@ -43,6 +44,7 @@ void imusetup(){
   //min and max values gotten from calibrate example for lsm303d
   imu.m_min = (LSM303::vector<int16_t>){-2570, -3354, -5081};
   imu.m_max = (LSM303::vector<int16_t>){+2746, +2649, +587};
+  tick = millis();
 }
 
 void APsetup(){
@@ -180,9 +182,20 @@ void readUDP(){
       moveToAngle(udp.theta);
   }
 }
+
+void sendUDP(){
+  
+}
+
 void loop() {
   // put your main code here, to run repeatedly:
   readUDP(); 
+  if(tick - tock >= 1/returnRate){
+    sendUDP(); 
+    tick = millis(); 
+  }
+  
+  tock = millis(); 
 }
 
 
