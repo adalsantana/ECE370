@@ -14,7 +14,7 @@ char pass[] = SECRET_PASS;  //network password
 
 int status = WL_IDLE_STATUS; 
 WiFiServer server(80); 
-
+double udpPacketDelay = (1/returnRate)*1000; //convert to milliseconds
 WiFiUDP Udp; 
 
 LSM303 imu;
@@ -117,7 +117,14 @@ void readUDP(){
 }
 
 void sendUDP(){
+  Serial.println("Constructing and sending UDP packet");
   udp_send udp; 
+  IPAddress target = {  DESTINATION_OCT_1, 
+                        DESTINATION_OCT_2, 
+                        DESTINATION_OCT_3, 
+                        DESTINATION_OCT_4
+                      };
+                      
   memset(&udp, 0, sizeof(udp));
   imu.read(); 
   udp.imu[0] = imu.a.x;
@@ -126,17 +133,20 @@ void sendUDP(){
   udp.imu[3] = imu.m.x;
   udp.imu[4] = imu.m.y;
   udp.imu[5] = imu.m.z;
+  udp.odo[0] = 0; 
+  udp.odo[1] = 0; 
+  udp.odo[2] = 0; 
   udp.heading = imu.heading(); 
-  char* outgoing = (char *) &udp; 
-  Udp.beginPacket(Udp.remoteIP(), UDP_PORT_SEND);
-  Udp.write(outgoing);
+  //char* outgoing = (char *) &udp; 
+  Udp.beginPacket(target, UDP_PORT_SEND);
+  Udp.write((char *) &udp);
   Udp.endPacket(); 
 }
 
 void loop() {
     //WiFiClient client = server.available();   // listen for incoming clients
-    readUDP(); 
-  if(tick - tock >= 1/returnRate){
+  readUDP(); 
+  if(tick - tock > udpPacketDelay){
     sendUDP(); 
     tock = millis(); 
   }
