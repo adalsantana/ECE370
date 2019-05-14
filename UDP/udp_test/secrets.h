@@ -17,7 +17,7 @@
 
 #define NETWORK_IP_1 192
 #define NETWORK_IP_2 168
-#define NETWORK_IP_3 0
+#define NETWORK_IP_3 1
 #define NETWORK_IP_4 1
 
 typedef struct udp_recv{
