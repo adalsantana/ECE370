@@ -119,7 +119,7 @@ void readUDP(){
 void sendUDP(){
   Serial.println("Constructing and sending UDP packet");
   udp_send udp; 
-  IPAddress target = {  DESTINATION_OCT_1, 
+  IPAddress targetIP = {  DESTINATION_OCT_1, 
                         DESTINATION_OCT_2, 
                         DESTINATION_OCT_3, 
                         DESTINATION_OCT_4
@@ -127,19 +127,19 @@ void sendUDP(){
                       
   memset(&udp, 0, sizeof(udp));
   imu.read(); 
-  udp.imu[0] = imu.a.x;
-  udp.imu[1] = imu.a.y;
-  udp.imu[2] = imu.a.z;
-  udp.imu[3] = imu.m.x;
-  udp.imu[4] = imu.m.y;
-  udp.imu[5] = imu.m.z;
+  udp.imu[0] = (double) imu.a.x;
+  udp.imu[1] = (double) imu.a.y;
+  udp.imu[2] = (double) imu.a.z;
+  udp.imu[3] = (double) imu.m.x;
+  udp.imu[4] = (double) imu.m.y;
+  udp.imu[5] = (double) imu.m.z;
   udp.odo[0] = 0; 
   udp.odo[1] = 0; 
   udp.odo[2] = 0; 
-  udp.heading = imu.heading(); 
+  udp.heading = (double) imu.heading(); 
   //char* outgoing = (char *) &udp; 
-  Udp.beginPacket(target, UDP_PORT_SEND);
-  Udp.write((char *) &udp);
+  Udp.beginPacket(targetIP, UDP_PORT_SEND);
+  Udp.write((char *) &udp, sizeof(udp));
   Udp.endPacket(); 
 }
 
