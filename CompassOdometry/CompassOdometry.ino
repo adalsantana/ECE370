@@ -179,7 +179,7 @@ void loop() {
       Serial.println(udp.velocity);
       Serial.println(udp.theta);
       Serial.println(udp.rst); 
-      moveToAngle(udp.velocity);
+      moveToAngle(udp.theta);
   }
 }
 
