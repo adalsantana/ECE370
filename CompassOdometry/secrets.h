@@ -1,6 +1,8 @@
 #define SECRET_SSID "feather"
 #define SECRET_PASS "pass"
 #define UDP_PORT_LISTEN 2363
+#define UDP_PORT_SEND 4242
+#define returnRate 10 //Hz
 
 typedef struct udp_recv{
   double velocity; 
