@@ -27,13 +27,20 @@ char pass[] = SECRET_PASS;  //network password
 int status = WL_IDLE_STATUS; 
 WiFiServer server(80); 
 WiFiUDP Udp; 
+double udpPacketDelay = (1/returnRate)*1000; //convert to milliseconds
+
 double tick = 0; 
 double tock = 0; 
+
+
 void setup() {
   Serial.begin(9600);
   motorsetup();
   imusetup(); 
   APsetup(); 
+  tick = millis();
+  tock = millis(); 
+
 }
 
 void imusetup(){
@@ -44,12 +51,40 @@ void imusetup(){
   //min and max values gotten from calibrate example for lsm303d
   imu.m_min = (LSM303::vector<int16_t>){-2570, -3354, -5081};
   imu.m_max = (LSM303::vector<int16_t>){+2746, +2649, +587};
-  tick = millis();
-  tock = millis(); 
+}
+
+void setNetwork(){
+  IPAddress ip = {  NETWORK_IP_1,
+                    NETWORK_IP_2,
+                    NETWORK_IP_3,
+                    NETWORK_IP_4
+                  };
+                  
+  IPAddress dns = { NETWORK_IP_1,
+                    NETWORK_IP_2,
+                    NETWORK_IP_3,
+                    NETWORK_IP_4
+                  };
+                  
+  IPAddress gateway = { NETWORK_IP_1,
+                        NETWORK_IP_2,
+                        NETWORK_IP_3,
+                        NETWORK_IP_4
+                      };
+  
+  IPAddress subnet = {  NETMASK_1,
+                        NETMASK_2,
+                        NETMASK_3,
+                        NETMASK_4
+                       };
+
+  WiFi.config(ip, dns, gateway, subnet);  
+
 }
 
 void APsetup(){
   WiFi.setPins(8, 7, 4, 2);
+  setNetwork();
   while(!Serial);
   if(WiFi.status() == WL_NO_SHIELD){
     //stop program
@@ -185,30 +220,43 @@ void readUDP(){
 }
 
 void sendUDP(){
+    Serial.println("Constructing and sending UDP packet");
   udp_send udp; 
+  IPAddress targetIP = {  
+                        DESTINATION_OCT_1, 
+                        DESTINATION_OCT_2, 
+                        DESTINATION_OCT_3, 
+                        DESTINATION_OCT_4
+                        };
+                      
   memset(&udp, 0, sizeof(udp));
   imu.read(); 
-  udp.imu[0] = imu.a.x;
-  udp.imu[1] = imu.a.y;
-  udp.imu[2] = imu.a.z;
-  udp.imu[3] = imu.m.x;
-  udp.imu[4] = imu.m.y;
-  udp.imu[5] = imu.m.z;
-  udp.heading = imu.heading(); 
-  char* outgoing = (char *) &udp; 
-  Udp.beginPacket(Udp.remoteIP(), UDP_PORT_SEND);
-  Udp.write(outgoing);
+  char testBuffer[] = "hello"; 
+  udp.imu[0] = (double) imu.a.x;
+  udp.imu[1] = (double) imu.a.y;
+  udp.imu[2] = (double) imu.a.z;
+  udp.imu[3] = (double) imu.m.x;
+  udp.imu[4] = (double) imu.m.y;
+  udp.imu[5] = (double) imu.m.z;
+  udp.odo[0] = 0; 
+  udp.odo[1] = 0; 
+  udp.odo[2] = 0; 
+  udp.heading = (double) imu.heading(); 
+  //char* outgoing = (char *) &udp; 
+  Udp.beginPacket(targetIP, UDP_PORT_SEND);
+  //Udp.write((char *) &udp, sizeof(udp));
+  Udp.write(testBuffer);
   Udp.endPacket(); 
+ 
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
   readUDP(); 
-  if(tick - tock >= 1/returnRate){
+  if(tick - tock > udpPacketDelay){
     sendUDP(); 
     tock = millis(); 
   }
-  
   tick = millis(); 
 }
 
