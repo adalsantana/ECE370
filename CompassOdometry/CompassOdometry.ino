@@ -20,8 +20,6 @@
 
 
 LSM303 imu;
-LSM303::vector<int16_t> running_min = {32767, 32767, 32767}, running_max = {-32768, -32768, -32768};
-const double toGauss = 0.061/1000.0; 
 
 char ssid[] = SECRET_SSID;  // network SSID)
 char pass[] = SECRET_PASS;  //network password
@@ -46,6 +44,7 @@ void imusetup(){
   imu.m_min = (LSM303::vector<int16_t>){-2570, -3354, -5081};
   imu.m_max = (LSM303::vector<int16_t>){+2746, +2649, +587};
 }
+
 void APsetup(){
   WiFi.setPins(8, 7, 4, 2);
   while(!Serial);
