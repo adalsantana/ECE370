@@ -1,8 +1,9 @@
 #define SECRET_SSID "feather"
-#define SECRET_PASS "fuck"
+#define SECRET_PASS "pass"
 #define wifi_channel  1
 #define UDP_PORT_SEND 4242
 #define UDP_PORT_LISTEN 2363
+#define returnRate 10 //Hz
 
 typedef struct udp_recv{
   double velocity; 
@@ -13,3 +14,10 @@ typedef struct udp_recv{
 typedef struct test{
   double testval;   
 }__attribute__((packed))test_t; 
+
+
+typedef struct udp_send{
+  double imu[6]; 
+  //double odo[3]; 
+  double heading; 
+}__attribute__((packed)) udp_send_t; 

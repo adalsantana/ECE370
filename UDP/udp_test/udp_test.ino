@@ -1,6 +1,8 @@
 #include <WiFi101.h>
 #include <WiFiUdp.h>
 #include "secrets.h"
+#include <LSM303.h>
+#include <Wire.h>
 
 #define MOTOR1_PINA 10
 #define MOTOR1_PINB 11
@@ -15,13 +17,32 @@ WiFiServer server(80);
 
 WiFiUDP Udp; 
 
+LSM303 imu;
+
 char packetBuffer[255]; //buffer to hold incoming packet
 char  ReplyBuffer[] = "acknowledged";       // a string to send back
+
+double tick = 0; 
+double tock = 0;
 
 void setup() {
   Serial.begin(9600);
   motorsetup();
   APsetup(); 
+  imusetup();
+  tick = millis();
+  tock = millis(); 
+
+}
+
+void imusetup(){
+  Wire.begin();
+  imu.init();
+  imu.enableDefault();
+  imu.read();
+  //min and max values gotten from calibrate example for lsm303d
+  imu.m_min = (LSM303::vector<int16_t>){-2570, -3354, -5081};
+  imu.m_max = (LSM303::vector<int16_t>){+2746, +2649, +587};
 }
 
 void APsetup(){
@@ -68,10 +89,9 @@ void motorsetup(){
   analogWrite(MOTOR2_PINB, 0);
 }
 
-void loop() {
-    //WiFiClient client = server.available();   // listen for incoming clients
-    int packetSize = Udp.parsePacket();
-    if (packetSize)
+void readUDP(){
+  int packetSize = Udp.parsePacket();
+  if (packetSize)
     {
       udp_recv udp; 
       memset(&udp, 0, sizeof(udp));
@@ -85,14 +105,42 @@ void loop() {
 
       // read the packet into packetBufffer
       int len = Udp.read((byte *) &udp, 255);
-      //int len = Udp.read(packetBuffer, 255);
       Serial.println("Contents:");
-      //Serial.println(packetBuffer); 
+      Serial.print("Velocity value: ");
       Serial.println(udp.velocity);
+      Serial.print("Theta value: ");
       Serial.println(udp.theta);
+      Serial.print("Reset value: ");
       Serial.println(udp.rst); 
-    }
-   
+      //moveToAngle(udp.theta);
+  }
+}
+
+void sendUDP(){
+  udp_send udp; 
+  memset(&udp, 0, sizeof(udp));
+  imu.read(); 
+  udp.imu[0] = imu.a.x;
+  udp.imu[1] = imu.a.y;
+  udp.imu[2] = imu.a.z;
+  udp.imu[3] = imu.m.x;
+  udp.imu[4] = imu.m.y;
+  udp.imu[5] = imu.m.z;
+  udp.heading = imu.heading(); 
+  char* outgoing = (char *) &udp; 
+  Udp.beginPacket(Udp.remoteIP(), UDP_PORT_SEND);
+  Udp.write(outgoing);
+  Udp.endPacket(); 
+}
+
+void loop() {
+    //WiFiClient client = server.available();   // listen for incoming clients
+    readUDP(); 
+  if(tick - tock >= 1/returnRate){
+    sendUDP(); 
+    tock = millis(); 
+  }
+  tick = millis();    
 }
 
 

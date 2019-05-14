@@ -45,6 +45,7 @@ void imusetup(){
   imu.m_min = (LSM303::vector<int16_t>){-2570, -3354, -5081};
   imu.m_max = (LSM303::vector<int16_t>){+2746, +2649, +587};
   tick = millis();
+  tock = millis(); 
 }
 
 void APsetup(){
@@ -205,10 +206,10 @@ void loop() {
   readUDP(); 
   if(tick - tock >= 1/returnRate){
     sendUDP(); 
-    tick = millis(); 
+    tock = millis(); 
   }
   
-  tock = millis(); 
+  tick = millis(); 
 }
 
 
