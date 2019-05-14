@@ -157,10 +157,9 @@ void moveToAngle(int targetAngle){ //angle should be given in degrees
   
 }
 
-void loop() {
-  // put your main code here, to run repeatedly:
+void readUDP(){
   int packetSize = Udp.parsePacket();
-    if (packetSize)
+  if (packetSize)
     {
       udp_recv udp; 
       memset(&udp, 0, sizeof(udp));
@@ -180,6 +179,10 @@ void loop() {
       Serial.println(udp.rst); 
       moveToAngle(udp.theta);
   }
+}
+void loop() {
+  // put your main code here, to run repeatedly:
+  readUDP(); 
 }
 
 
