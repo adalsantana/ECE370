@@ -1,6 +1,10 @@
 #include <LSM303.h>
 #include <Wire.h>
+#include <WiFiUdp.h>
 #include <math.h>
+#include <WiFi101.h>
+#include "secrets.h"
+
 
 #define MOTOR1_PINA 10
 #define MOTOR1_PINB 11
@@ -19,6 +23,13 @@ LSM303 imu;
 LSM303::vector<int16_t> running_min = {32767, 32767, 32767}, running_max = {-32768, -32768, -32768};
 const double toGauss = 0.061/1000.0; 
 
+char ssid[] = SECRET_SSID;  // network SSID)
+char pass[] = SECRET_PASS;  //network password
+
+int status = WL_IDLE_STATUS; 
+WiFiServer server(80); 
+WiFiUDP Udp; 
+
 void setup() {
   Serial.begin(9600);
   motorsetup();
@@ -26,6 +37,41 @@ void setup() {
   imu.init();
   imu.enableDefault();
   imu.read();
+  APsetup(); 
+}
+
+
+void APsetup(){
+  WiFi.setPins(8, 7, 4, 2);
+  while(!Serial);
+  if(WiFi.status() == WL_NO_SHIELD){
+    //stop program
+    while(true);
+  }
+
+  // by default the local IP address of will be 192.168.1.1
+  // you can override it with the following:
+  //WiFi.config(IPAddress(10, 0, 0, 30));
+  
+  // print the network name (SSID);
+  Serial.print("Creating access point named: ");
+  Serial.println(ssid);
+
+  status = WiFi.beginAP(ssid);
+  if (status != WL_AP_LISTENING) {
+    Serial.println("Creating access point failed");
+    // don't continue
+    while (true);
+  }
+  //wait 10 seconds for connection
+  delay(10000);
+  //start web server on port 80
+  printWiFiStatus(); 
+  server.begin();
+  Serial.print("\nListening for UDP packets on port ");
+  Serial.println(UDP_PORT_LISTEN); 
+  Serial.print("Result of UDP.begin ");
+  Serial.println(Udp.begin(UDP_PORT_LISTEN));
 }
 
 void motorsetup(){
@@ -123,4 +169,26 @@ void loop() {
     Serial.println(desiredAngle);
     moveToAngle(desiredAngle); 
   }
+}
+
+
+void printWiFiStatus() {
+  // print the SSID of the network you're attached to:
+  Serial.print("SSID: ");
+  Serial.println(WiFi.SSID());
+
+  // print your WiFi shield's IP address:
+  IPAddress ip = WiFi.localIP();
+  Serial.print("IP Address: ");
+  Serial.println(ip);
+
+  // print the received signal strength:
+  long rssi = WiFi.RSSI();
+  Serial.print("signal strength (RSSI):");
+  Serial.print(rssi);
+  Serial.println(" dBm");
+  // print where to go in a browser:
+  Serial.print("To see this page in action, open a browser to http://");
+  Serial.println(ip);
+
 }
