@@ -35,6 +35,34 @@ void setup() {
 
 }
 
+void setNetwork(){
+  IPAddress ip = {  NETWORK_IP_1,
+                    NETWORK_IP_2,
+                    NETWORK_IP_3,
+                    NETWORK_IP_4
+                  };
+                  
+  IPAddress dns = { NETWORK_IP_1,
+                    NETWORK_IP_2,
+                    NETWORK_IP_3,
+                    NETWORK_IP_4
+                  };
+                  
+  IPAddress gateway = { NETWORK_IP_1,
+                        NETWORK_IP_2,
+                        NETWORK_IP_3,
+                        NETWORK_IP_4
+                      };
+  
+  IPAddress subnet = {  NETMASK_1,
+                        NETMASK_2,
+                        NETMASK_3,
+                        NETMASK_4
+                       };
+
+  WiFi.config(ip, dns, gateway, subnet);  
+
+}
 void imusetup(){
   Wire.begin();
   imu.init();
@@ -47,6 +75,7 @@ void imusetup(){
 
 void APsetup(){
   WiFi.setPins(8, 7, 4, 2);
+  setNetwork(); 
   while(!Serial);
   if(WiFi.status() == WL_NO_SHIELD){
     //stop program
@@ -119,14 +148,16 @@ void readUDP(){
 void sendUDP(){
   Serial.println("Constructing and sending UDP packet");
   udp_send udp; 
-  IPAddress targetIP = {  DESTINATION_OCT_1, 
+  IPAddress targetIP = {  
+                        DESTINATION_OCT_1, 
                         DESTINATION_OCT_2, 
                         DESTINATION_OCT_3, 
                         DESTINATION_OCT_4
-                      };
+                        };
                       
   memset(&udp, 0, sizeof(udp));
   imu.read(); 
+  char testBuffer[] = "hello"; 
   udp.imu[0] = (double) imu.a.x;
   udp.imu[1] = (double) imu.a.y;
   udp.imu[2] = (double) imu.a.z;
@@ -139,7 +170,8 @@ void sendUDP(){
   udp.heading = (double) imu.heading(); 
   //char* outgoing = (char *) &udp; 
   Udp.beginPacket(targetIP, UDP_PORT_SEND);
-  Udp.write((char *) &udp, sizeof(udp));
+  //Udp.write((char *) &udp, sizeof(udp));
+  Udp.write(testBuffer);
   Udp.endPacket(); 
 }
 
