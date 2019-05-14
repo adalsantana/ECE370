@@ -33,14 +33,19 @@ WiFiUDP Udp;
 void setup() {
   Serial.begin(9600);
   motorsetup();
+  imusetup(); 
+  APsetup(); 
+}
+
+void imusetup(){
   Wire.begin();
   imu.init();
   imu.enableDefault();
   imu.read();
-  APsetup(); 
+  //min and max values gotten from calibrate example for lsm303d
+  compass.m_min = (LSM303::vector<int16_t>){-2570, -3354, -5081};
+  compass.m_max = (LSM303::vector<int16_t>){+2746, +2649, +587};
 }
-
-
 void APsetup(){
   WiFi.setPins(8, 7, 4, 2);
   while(!Serial);
