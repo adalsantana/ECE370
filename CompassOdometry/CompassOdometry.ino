@@ -43,8 +43,8 @@ void imusetup(){
   imu.enableDefault();
   imu.read();
   //min and max values gotten from calibrate example for lsm303d
-  compass.m_min = (LSM303::vector<int16_t>){-2570, -3354, -5081};
-  compass.m_max = (LSM303::vector<int16_t>){+2746, +2649, +587};
+  imu.m_min = (LSM303::vector<int16_t>){-2570, -3354, -5081};
+  imu.m_max = (LSM303::vector<int16_t>){+2746, +2649, +587};
 }
 void APsetup(){
   WiFi.setPins(8, 7, 4, 2);
@@ -125,29 +125,24 @@ void motorsOff(){
 
 void moveToAngle(int targetAngle){ //angle should be given in degrees 
   imu.read(); 
-  double currentAngle = imu.heading(); //convert to degrees
-  double error = (currentAngle > targetAngle) ? currentAngle - targetAngle : targetAngle - currentAngle; 
-  int mod_diff = (int)error % 360; // %make error between 0 (inclusive) and 360.0 (exclusive)
-  double dist = mod_diff > 180.0 ? 360.0 - mod_diff: mod_diff; //for rollovers
-  Serial.print("Mod_diff: ");
-  Serial.print(mod_diff);
+  double currentAngle = imu.heading(); 
+  double error = currentAngle-targetAngle; //if negative rotate clockwise 
+  error = (int) error % 360; // %make error between 0 (inclusive) and 360.0 (exclusive)
+  double dist = error > 180.0 ? 360.0 - error: error; //for rollovers
   Serial.print(" Current Angle: ");
   Serial.println(currentAngle);
   Serial.print(" Distance to target ");
   Serial.println(dist);
-  while(dist > angleTolerance){
+  while(abs(error) > angleTolerance){
     
-    if(mod_diff > 180.0){//clockwise
-      imu.read(); 
-      dist = mod_diff;  
+    if(error > 0){//clockwise  
       setAngularVelocity(rotate_speed);
     }
     else{ //clockwise
-      imu.read();
-      dist = targetAngle - imu.heading(); 
       setAngularVelocity(-rotate_speed);
     }
-    mod_diff = (int)error % 360; // %make error between 0 (inclusive) and 360.0 (exclusive)
+    error = currentAngle-targetAngle; 
+    error = (int) error % 360; // %make error between 0 (inclusive) and 360.0 (exclusive)
     Serial.print("Current Angle: ");
     imu.read();
     
