@@ -160,14 +160,26 @@ void moveToAngle(int targetAngle){ //angle should be given in degrees
 
 void loop() {
   // put your main code here, to run repeatedly:
-  while(Serial.available()){
-    int desiredAngle = Serial.parseInt();
-    imu.read();
-    Serial.print("Angle when recv ");
-    Serial.println(imu.heading());
-    Serial.print("Received angle ");
-    Serial.println(desiredAngle);
-    moveToAngle(desiredAngle); 
+  int packetSize = Udp.parsePacket();
+    if (packetSize)
+    {
+      udp_recv udp; 
+      memset(&udp, 0, sizeof(udp));
+      Serial.print("Received packet of size ");
+      Serial.println(packetSize);
+      Serial.print("From ");
+      IPAddress remoteIp = Udp.remoteIP();
+      Serial.print(remoteIp);
+      Serial.print(", port ");
+      Serial.println(Udp.remotePort());
+
+      // read the packet into packetBufffer
+      int len = Udp.read((byte *) &udp, 255);
+      Serial.println("Contents:");
+      Serial.println(udp.velocity);
+      Serial.println(udp.theta);
+      Serial.println(udp.rst); 
+      moveToAngle(udp.velocity);
   }
 }
 
