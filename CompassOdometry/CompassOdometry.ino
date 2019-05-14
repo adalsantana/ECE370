@@ -185,6 +185,7 @@ void readUDP(){
 
 void sendUDP(){
   udp_send udp; 
+  memset(&udp, 0, sizeof(udp));
   imu.read(); 
   udp.imu[0] = imu.a.x;
   udp.imu[1] = imu.a.y;
@@ -193,6 +194,10 @@ void sendUDP(){
   udp.imu[4] = imu.m.y;
   udp.imu[5] = imu.m.z;
   udp.heading = imu.heading(); 
+  char* outgoing = (char *) &udp; 
+  Udp.beginPacket(Udp.remoteIP(), UDP_PORT_SEND);
+  Udp.write(outgoing);
+  Udp.endPacket(); 
 }
 
 void loop() {
