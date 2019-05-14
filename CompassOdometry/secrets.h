@@ -12,6 +12,6 @@ typedef struct udp_recv{
 
 typedef struct udp_send{
   double imu[6]; 
-  double odo[3]; 
+  //double odo[3]; 
   double heading; 
 }__attribute__((packed)) udp_send_t; 

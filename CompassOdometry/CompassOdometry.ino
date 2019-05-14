@@ -184,7 +184,15 @@ void readUDP(){
 }
 
 void sendUDP(){
-  
+  udp_send udp; 
+  imu.read(); 
+  udp.imu[0] = imu.a.x;
+  udp.imu[1] = imu.a.y;
+  udp.imu[2] = imu.a.z;
+  udp.imu[3] = imu.m.x;
+  udp.imu[4] = imu.m.y;
+  udp.imu[5] = imu.m.z;
+  udp.heading = imu.heading(); 
 }
 
 void loop() {
