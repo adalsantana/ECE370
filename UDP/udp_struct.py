@@ -18,14 +18,14 @@ class imu(Structure):
                     ]
 class odo(Structure):
         _pack_= 1
-        _fields_  = [   ("x pos", c_double),
-                        ("y pos", c_double), 
-                        ("z pos", c_double)
+        _fields_  = [   ("x", c_double),
+                        ("y", c_double), 
+                        ("z", c_double)
                     ]
 
 class receive(Structure):
         _pack_ = 1
-        _fields_ =  [   ("Imu Data", POINTER(imu)),
-                        ("Odometry Data", POINTER(odo)),
+        _fields_ =  [   ("ImuData", imu),
+                        ("OdometryData", odo),
                         ("heading", c_double)
                     ]
