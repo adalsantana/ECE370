@@ -49,8 +49,8 @@ void imusetup(){
   imu.enableDefault();
   imu.read();
   //min and max values gotten from calibrate example for lsm303d
-  imu.m_min = (LSM303::vector<int16_t>){-2570, -3354, -5081};
-  imu.m_max = (LSM303::vector<int16_t>){+2746, +2649, +587};
+  imu.m_min = (LSM303::vector<int16_t>){-2985, -2841, -7073};
+  imu.m_max = (LSM303::vector<int16_t>){+2870, +4579, +241};
 }
 
 void setNetwork(){
