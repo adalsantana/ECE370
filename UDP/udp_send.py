@@ -47,7 +47,8 @@ try:
 		msg_send=pack(msg)
 		sock.sendto(msg_send, (UDP_IP, UDP_PORT))
             elif(keypress in theta.keys()):
-                msg.theta+= theta[keypress]
+                msg.theta= theta[keypress]
+                screen.addstr("Angle updated to " + str(msg.theta) + " degrees\n")
 		msg_send=pack(msg)
             	sock.sendto(msg_send, (UDP_IP, UDP_PORT))
 	elif(curses.keyname(keypress) == " "):
@@ -58,7 +59,8 @@ try:
             sock.sendto(msg_send, (UDP_IP, UDP_PORT))
 	elif(keypress in wasd.keys()):
             msg.rst=0
-            msg.theta+= theta[keypress]
+            msg.theta = wasd[keypress]
+            screen.addstr("Angle updated to " + str(msg.theta) + " degrees\n")
 	    msg_send=pack(msg)
             sock.sendto(msg_send, (UDP_IP, UDP_PORT))
 finally:
