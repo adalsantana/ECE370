@@ -67,15 +67,56 @@ void setup() {
   motorsetup();
   imusetup();
   APsetup();
+  imusetup();
+  oldimu_y = (double)imu.a.y*0.061/1000.0;
+
+}
+
+void imusetup(){
+  Wire.begin();
   imu.init();
   imu.enableDefault();
   imu.read();
-  oldimu_y = (double)imu.a.y*0.061/1000.0;
+  //min and max values gotten from calibrate example for lsm303d
+  //always run calibrate imu program and update below with observed values
+  imu.m_min = (LSM303::vector<int16_t>){-2985, -2841, -7073};
+  imu.m_max = (LSM303::vector<int16_t>){+2870, +4579, +241};
+  moveToAngle(10); //orient close to North
+}
+
+
+void setNetwork(){
+  IPAddress ip = {  NETWORK_IP_1,
+                    NETWORK_IP_2,
+                    NETWORK_IP_3,
+                    NETWORK_IP_4
+                  };
+                  
+  IPAddress dns = { NETWORK_IP_1,
+                    NETWORK_IP_2,
+                    NETWORK_IP_3,
+                    NETWORK_IP_4
+                  };
+                  
+  IPAddress gateway = { NETWORK_IP_1,
+                        NETWORK_IP_2,
+                        NETWORK_IP_3,
+                        NETWORK_IP_4
+                      };
+  
+  IPAddress subnet = {  NETMASK_1,
+                        NETMASK_2,
+                        NETMASK_3,
+                        NETMASK_4
+                       };
+
+  WiFi.config(ip, dns, gateway, subnet);  
 
 }
 
 void APsetup(){
   WiFi.setPins(8, 7, 4, 2);
+  setNetwork();
   while(!Serial);
   if(WiFi.status() == WL_NO_SHIELD){
     //stop program
@@ -96,8 +137,8 @@ void APsetup(){
     // don't continue
     while (true);
   }
-  //wait 10 seconds for connection
-  delay(10000);
+  //wait 3 seconds for connection
+  delay(3000);
   //start web server on port 80
   printWiFiStatus(); 
   server.begin();
@@ -105,14 +146,6 @@ void APsetup(){
   Serial.println(UDP_PORT_LISTEN); 
   Serial.print("Result of UDP.begin ");
   Serial.println(Udp.begin(UDP_PORT_LISTEN));
-}
-
-void imusetup(){
-  imu.init();
-  imu.enableDefault();
-  imu.read();
-  //moveToAngle(0); 
-  oldimu_y = (double) imu.a.y*0.061/1000.0;
 }
 
 void irsetup(){
@@ -241,36 +274,24 @@ void motorsOff(){
 }
 
 void moveToAngle(int targetAngle){ //angle should be given in degrees 
-  imu.read(); 
-  double currentAngle = imu.heading(); //convert to degrees
-  double error = (currentAngle > targetAngle) ? currentAngle - targetAngle : targetAngle - currentAngle; 
-  int mod_diff = (int)error % 360; // %make error between 0 (inclusive) and 360.0 (exclusive)
-  double dist = mod_diff > 180.0 ? 360.0 - mod_diff: mod_diff; //for rollovers
-  Serial.print("Mod_diff: ");
-  Serial.print(mod_diff);
-  Serial.print(" Current Angle: ");
-  Serial.println(currentAngle);
+ imu.read(); 
+  actual.theta = imu.heading(); 
+  double error = actual.theta-targetAngle; //if negative rotate clockwise 
+  error = (int) error % 360; // %make error between 0 (inclusive) and 360.0 (exclusive)
   
-  while(error > angleTolerance){
+  if(abs(error) > angleTolerance){
     
-    if(mod_diff < 180.0){//counterclockwise
-      imu.read(); 
-      error = targetAngle-imu.heading(); 
-      setAngularVelocity(-rotate_speed);
-    }
-    else{ //clockwise
-      imu.read();
-      error = imu.heading() - targetAngle; 
+    if(error > 0){//clockwise  
       setAngularVelocity(rotate_speed);
     }
-    mod_diff = (int)error % 360; // %make error between 0 (inclusive) and 360.0 (exclusive)
-    dist = mod_diff > 180.0 ? 360.0 - mod_diff: mod_diff; //for rollovers
-    Serial.print("Current Angle: ");
-    Serial.print(currentAngle);
-    Serial.print(" Error: ");
-    Serial.println(error);
+    else{ //clockwise
+      setAngularVelocity(-rotate_speed);
+    }
+    error = actual.theta-targetAngle; 
+    error = (int) error % 360; // %make error between 0 (inclusive) and 360.0 (exclusive)
+    imu.read();
   }
-  motorsOff(); 
+ motorsOff(); 
   
 }
 
@@ -281,6 +302,51 @@ void printGlobalPosition(){
   Serial.println(x_global);
   Serial.print("Y location");
   Serial.println(y_global);
+}
+
+void readUDP(){
+  int packetSize = Udp.parsePacket();
+  if (packetSize)
+    {
+      udp_recv udp; 
+      memset(&udp, 0, sizeof(udp));
+      // read the packet into packetBufffer
+      int len = Udp.read((byte *) &udp, 255);
+      desired.theta = udp.theta;
+      desired.velocity = udp.velocity;
+      desired.rst = udp.rst; 
+  }
+}
+
+void sendUDP(){
+  //Serial.println("Constructing and sending UDP packet");
+  udp_send udp; 
+  IPAddress targetIP = {  
+                        DESTINATION_OCT_1, 
+                        DESTINATION_OCT_2, 
+                        DESTINATION_OCT_3, 
+                        DESTINATION_OCT_4
+                        };
+                      
+  memset(&udp, 0, sizeof(udp));
+  imu.read(); 
+  char testBuffer[] = "hello"; 
+  udp.imu[0] = (double) imu.a.x;
+  udp.imu[1] = (double) imu.a.y;
+  udp.imu[2] = (double) imu.a.z;
+  udp.imu[3] = (double) imu.m.x;
+  udp.imu[4] = (double) imu.m.y;
+  udp.imu[5] = (double) imu.m.z;
+  udp.odo[0] = 0; 
+  udp.odo[1] = 0; 
+  udp.odo[2] = 0; 
+  udp.heading = (double) imu.heading(); 
+  //char* outgoing = (char *) &udp; 
+  Udp.beginPacket(targetIP, UDP_PORT_SEND);
+  Udp.write((char *) &udp, sizeof(udp));
+  //Udp.write(testBuffer);
+  Udp.endPacket(); 
+ 
 }
 
 void loop() {
