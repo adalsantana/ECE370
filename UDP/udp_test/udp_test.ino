@@ -170,8 +170,8 @@ void sendUDP(){
   udp.heading = (double) imu.heading(); 
   //char* outgoing = (char *) &udp; 
   Udp.beginPacket(targetIP, UDP_PORT_SEND);
-  //Udp.write((char *) &udp, sizeof(udp));
-  Udp.write(testBuffer);
+  Udp.write((char *) &udp, sizeof(udp));
+  //Udp.write(testBuffer);
   Udp.endPacket(); 
 }
 
