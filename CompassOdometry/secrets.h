@@ -2,7 +2,7 @@
 #define SECRET_PASS "pass"
 #define UDP_PORT_LISTEN 2363
 #define UDP_PORT_SEND 4242
-#define returnRate 10 //Hz
+#define returnRate 0.5 //Hz
 
 #define DESTINATION_OCT_1 192
 #define DESTINATION_OCT_2 168
@@ -31,3 +31,9 @@ typedef struct udp_send{
   double odo[3]; 
   double heading; 
 }__attribute__((packed)) udp_send_t; 
+
+typedef struct values{
+  double velocity; 
+  double theta; 
+  int rst; 
+};

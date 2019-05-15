@@ -32,6 +32,8 @@ double udpPacketDelay = (1/returnRate)*1000; //convert to milliseconds
 double tick = 0; 
 double tock = 0; 
 
+values desired; 
+values actual; 
 
 void setup() {
   Serial.begin(9600);
@@ -40,6 +42,12 @@ void setup() {
   APsetup(); 
   tick = millis();
   tock = millis(); 
+  desired.velocity = 0; 
+  desired.theta = 0;  
+  desired.rst = 0;
+  actual.velocity = 0; 
+  actual.theta = 0; 
+  actual.rst = 0; 
 
 }
 
@@ -49,8 +57,10 @@ void imusetup(){
   imu.enableDefault();
   imu.read();
   //min and max values gotten from calibrate example for lsm303d
+  //always run calibrate imu program and update below with observed values
   imu.m_min = (LSM303::vector<int16_t>){-2985, -2841, -7073};
   imu.m_max = (LSM303::vector<int16_t>){+2870, +4579, +241};
+  moveToAngle(10); //orient close to North
 }
 
 void setNetwork(){
@@ -105,8 +115,8 @@ void APsetup(){
     // don't continue
     while (true);
   }
-  //wait 10 seconds for connection
-  delay(10000);
+  //wait 3 seconds for connection
+  delay(3000);
   //start web server on port 80
   printWiFiStatus(); 
   server.begin();
@@ -162,15 +172,11 @@ void motorsOff(){
 
 void moveToAngle(int targetAngle){ //angle should be given in degrees 
   imu.read(); 
-  double currentAngle = imu.heading(); 
-  double error = currentAngle-targetAngle; //if negative rotate clockwise 
+  actual.theta = imu.heading(); 
+  double error = actual.theta-targetAngle; //if negative rotate clockwise 
   error = (int) error % 360; // %make error between 0 (inclusive) and 360.0 (exclusive)
-  double dist = error > 180.0 ? 360.0 - error: error; //for rollovers
-  Serial.print(" Current Angle: ");
-  Serial.println(currentAngle);
-  Serial.print(" Distance to target ");
-  Serial.println(dist);
-  while(abs(error) > angleTolerance){
+  
+  if(abs(error) > angleTolerance){
     
     if(error > 0){//clockwise  
       setAngularVelocity(rotate_speed);
@@ -178,20 +184,11 @@ void moveToAngle(int targetAngle){ //angle should be given in degrees
     else{ //clockwise
       setAngularVelocity(-rotate_speed);
     }
-    error = currentAngle-targetAngle; 
+    error = actual.theta-targetAngle; 
     error = (int) error % 360; // %make error between 0 (inclusive) and 360.0 (exclusive)
-    Serial.print("Current Angle: ");
     imu.read();
-    
-    Serial.print(imu.heading());
-    Serial.print(" Error: ");
-    Serial.println(error);
-    Serial.print(" Distance to target ");
-    Serial.println(dist);
   }
-  Serial.print(" Final Error: ");
-  Serial.println(error);
-  motorsOff(); 
+ motorsOff(); 
   
 }
 
@@ -201,26 +198,16 @@ void readUDP(){
     {
       udp_recv udp; 
       memset(&udp, 0, sizeof(udp));
-      Serial.print("Received packet of size ");
-      Serial.println(packetSize);
-      Serial.print("From ");
-      IPAddress remoteIp = Udp.remoteIP();
-      Serial.print(remoteIp);
-      Serial.print(", port ");
-      Serial.println(Udp.remotePort());
-
       // read the packet into packetBufffer
       int len = Udp.read((byte *) &udp, 255);
-      Serial.println("Contents:");
-      Serial.println(udp.velocity);
-      Serial.println(udp.theta);
-      Serial.println(udp.rst); 
-      moveToAngle(udp.theta);
+      desired.theta = udp.theta;
+      desired.velocity = udp.velocity;
+      desired.rst = udp.rst; 
   }
 }
 
 void sendUDP(){
-    Serial.println("Constructing and sending UDP packet");
+  //Serial.println("Constructing and sending UDP packet");
   udp_send udp; 
   IPAddress targetIP = {  
                         DESTINATION_OCT_1, 
@@ -257,6 +244,7 @@ void loop() {
     sendUDP(); 
     tock = millis(); 
   }
+  moveToAngle(desired.theta);
   tick = millis(); 
 }
 
