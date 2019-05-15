@@ -60,6 +60,13 @@ WiFiServer server(80);
 
 WiFiUDP Udp; 
 
+double udpPacketDelay = (1/returnRate)*1000; //convert to milliseconds
+
+double tick = 0; 
+double tock = 0; 
+
+values desired; 
+values actual;
 
 void setup() {
   Serial.begin(9600);
@@ -68,7 +75,14 @@ void setup() {
   imusetup();
   APsetup();
   imusetup();
-  oldimu_y = (double)imu.a.y*0.061/1000.0;
+  tick = millis();
+  tock = millis(); 
+  desired.velocity = 0; 
+  desired.theta = 0;  
+  desired.rst = 0;
+  actual.velocity = 0; 
+  actual.theta = 0; 
+  actual.rst = 0; 
 
 }
 
@@ -81,6 +95,7 @@ void imusetup(){
   //always run calibrate imu program and update below with observed values
   imu.m_min = (LSM303::vector<int16_t>){-2985, -2841, -7073};
   imu.m_max = (LSM303::vector<int16_t>){+2870, +4579, +241};
+  oldimu_y = (double)imu.a.y*0.061/1000.0;
   moveToAngle(10); //orient close to North
 }
 
@@ -350,30 +365,14 @@ void sendUDP(){
 }
 
 void loop() {
- int packetSize = Udp.parsePacket();
-    if (packetSize)
-    {
-      udp_recv udp; 
-      memset(&udp, 0, sizeof(udp));
-      Serial.print("Received packet of size ");
-      Serial.println(packetSize);
-      Serial.print("From ");
-      IPAddress remoteIp = Udp.remoteIP();
-      Serial.print(remoteIp);
-      Serial.print(", port ");
-      Serial.println(Udp.remotePort());
-
-      // read the packet into packetBufffer
-      int len = Udp.read((byte *) &udp, 255);
-      //int len = Udp.read(packetBuffer, 255);
-      Serial.println("Contents:");
-      //Serial.println(packetBuffer); 
-      Serial.println(udp.velocity);
-      Serial.println(udp.theta);
-      Serial.println(udp.rst); 
-      setVelocity(udp.velocity);
+ // put your main code here, to run repeatedly:
+  readUDP(); 
+  if(tick - tock > udpPacketDelay){
+    sendUDP(); 
+    tock = millis(); 
   }
-  //checkIMU();
+  moveToAngle(desired.theta);
+  tick = millis(); 
 }
 
 
