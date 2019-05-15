@@ -44,7 +44,6 @@ float x_global = 0.0;
 float y_global = 0.0; 
  
 LSM303 imu;
-LSM303::vector<int16_t> running_min = {32767, 32767, 32767}, running_max = {-32768, -32768, -32768};
 double oldimu_y; 
 
 const double toGauss = 0.061/1000.0; 
@@ -72,7 +71,6 @@ void setup() {
   Serial.begin(9600);
   Wire.begin();
   motorsetup();
-  imusetup();
   APsetup();
   imusetup();
   tick = millis();
@@ -83,18 +81,17 @@ void setup() {
   actual.velocity = 0; 
   actual.theta = 0; 
   actual.rst = 0; 
-
 }
 
 void imusetup(){
   Wire.begin();
   imu.init();
   imu.enableDefault();
+  imu.m_min = (LSM303::vector<int16_t>){-3376,  -2773,  -5514};
+  imu.m_max = (LSM303::vector<int16_t>){+2393,  +3359,   +575};
   imu.read();
   //min and max values gotten from calibrate example for lsm303d
   //always run calibrate imu program and update below with observed values
-  imu.m_min = (LSM303::vector<int16_t>){-2985, -2841, -7073};
-  imu.m_max = (LSM303::vector<int16_t>){+2870, +4579, +241};
   oldimu_y = (double)imu.a.y*0.061/1000.0;
   moveToAngle(10); //orient close to North
 }
@@ -254,9 +251,14 @@ void checkIMU(){
   imu.read();
   double changeIn = (double)imu.a.y*0.061/1000.0;
   double jerk = abs(oldimu_y - changeIn);
-  if(jerk > threshold_jerk){
+  if(desired.rst == 1) {
+    pickedup = false; 
+  }
+  else {
+    if(jerk > threshold_jerk){
     Serial.println("Pickup detected");
     pickedup = true; 
+    }
   }
  
   oldimu_y = (double)imu.a.y*0.061/1000.0;
@@ -265,19 +267,27 @@ void checkIMU(){
 void setAngularVelocity(float velocity){
   float s = velocity; 
   if(s < 0) s = -s; 
-  int sp1 = setSpeed(s);  //speed motor 1
-  int sp2 = setSpeed(s);  //speed motor 2
-  if(velocity < 0){ //turn clockwise  
-    analogWrite(MOTOR1_PINB, 0);
-    analogWrite(MOTOR1_PINA, sp1);
-    analogWrite(MOTOR2_PINB, 0);
-    analogWrite(MOTOR2_PINA, sp2);
+  if(!pickedup){
+    int sp1 = setSpeed(s);  //speed motor 1
+    int sp2 = setSpeed(s);  //speed motor 2
+    if(velocity < 0){ //turn clockwise  
+      analogWrite(MOTOR1_PINB, 0);
+      analogWrite(MOTOR1_PINA, sp1);
+      analogWrite(MOTOR2_PINB, 0);
+      analogWrite(MOTOR2_PINA, sp2);
+    }
+    else { //turn counterclockwise
+      analogWrite(MOTOR1_PINA, 0);
+      analogWrite(MOTOR1_PINB, sp1);
+      analogWrite(MOTOR2_PINA, 0);
+      analogWrite(MOTOR2_PINB, sp2);
+    }
   }
-  else { //turn counterclockwise
-    analogWrite(MOTOR1_PINA, 0);
-    analogWrite(MOTOR1_PINB, sp1);
-    analogWrite(MOTOR2_PINA, 0);
-    analogWrite(MOTOR2_PINB, sp2);
+  else{
+      analogWrite(MOTOR1_PINA, 0);
+      analogWrite(MOTOR1_PINB, 0);
+      analogWrite(MOTOR2_PINB, 0);
+      analogWrite(MOTOR2_PINA, 0);
   }
 }
 
@@ -290,13 +300,12 @@ void motorsOff(){
 
 void moveToAngle(int targetAngle){ //angle should be given in degrees 
  imu.read(); 
-  actual.theta = imu.heading(); 
-  double error = actual.theta-targetAngle; //if negative rotate clockwise 
-  error = (int) error % 360; // %make error between 0 (inclusive) and 360.0 (exclusive)
-  
-  if(abs(error) > angleTolerance){
-    
-    if(error > 0){//clockwise  
+ actual.theta = imu.heading(); 
+ double error = actual.theta-targetAngle; //if negative rotate clockwise 
+ error = (int) error % 360; // %make error between 0 (inclusive) and 360.0 (exclusive)
+ 
+ if(abs(error) > angleTolerance){  
+   if(error > 0){ //clockwise  
       setAngularVelocity(rotate_speed);
     }
     else{ //clockwise
@@ -306,7 +315,10 @@ void moveToAngle(int targetAngle){ //angle should be given in degrees
     error = (int) error % 360; // %make error between 0 (inclusive) and 360.0 (exclusive)
     imu.read();
   }
- motorsOff(); 
+  else{
+    setVelocity(desired.velocity);
+  }
+ //motorsOff(); 
   
 }
 
@@ -366,6 +378,7 @@ void sendUDP(){
 
 void loop() {
  // put your main code here, to run repeatedly:
+  checkIMU(); 
   readUDP(); 
   if(tick - tock > udpPacketDelay){
     sendUDP(); 
